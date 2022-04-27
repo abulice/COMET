@@ -92,7 +92,10 @@ class RankingMetric(CometModel):
 
     def init_metrics(self):
         self.train_metrics = WMTKendall(prefix="train")
-        self.val_metrics = WMTKendall(prefix="val")
+        self.val_metrics = [
+            WMTKendall(prefix=d) 
+            for d in self.hparams.validation_data
+        ]
 
     @property
     def loss(self):
@@ -206,15 +209,6 @@ class RankingMetric(CometModel):
         :return: List of records as dictionaries
         """
         df = pd.read_csv(path)
-
-        if regression:
-            df = df[["src", "mt", "ref", "score"]]
-            df["src"] = df["src"].astype(str)
-            df["mt"] = df["mt"].astype(str)
-            df["ref"] = df["ref"].astype(str)
-            df["score"] = df["score"].astype(float)
-            return df.to_dict("records")
-
         df = df[["src", "pos", "neg", "ref"]]
         df["src"] = df["src"].astype(str)
         df["pos"] = df["pos"].astype(str)
@@ -270,16 +264,15 @@ class RankingMetric(CometModel):
         loss_value = batch_prediction["loss"]
         self.log("val_loss", loss_value, on_step=True, on_epoch=True)
 
-        # TODO: REMOVE if condition after torchmetrics bug fix
         if dataloader_idx == 0:
             self.train_metrics.update(
                 batch_prediction["distance_pos"], batch_prediction["distance_neg"]
             )
-        elif dataloader_idx == 1:
-            self.val_metrics.update(
+        elif dataloader_idx > 0:
+            self.val_metrics[dataloader_idx-1].update(
                 batch_prediction["distance_pos"], batch_prediction["distance_neg"]
             )
-
+            
     def predict_step(
         self,
         batch: Dict[str, torch.Tensor],

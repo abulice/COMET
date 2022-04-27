@@ -66,7 +66,7 @@ class RegressionMetric(CometModel):
         dropout: float = 0.1,
         batch_size: int = 4,
         train_data: Optional[str] = None,
-        validation_data: Optional[str] = None,
+        validation_data: Optional[List[str]] = None,
         hidden_sizes: List[int] = [2304, 768],
         activations: str = "Tanh",
         final_activation: Optional[str] = None,
@@ -102,7 +102,10 @@ class RegressionMetric(CometModel):
 
     def init_metrics(self):
         self.train_metrics = RegressionMetrics(prefix="train")
-        self.val_metrics = RegressionMetrics(prefix="val")
+        self.val_metrics = [
+            RegressionMetrics(prefix=d) 
+            for d in self.hparams.validation_data
+        ]
 
     def configure_optimizers(
         self,

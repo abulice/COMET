@@ -99,7 +99,7 @@ class CometModel(ptl.LightningModule, metaclass=abc.ABCMeta):
         dropout: float = 0.1,
         batch_size: int = 4,
         train_data: Optional[str] = None,
-        validation_data: Optional[str] = None,
+        validation_data: Optional[List[str]] = None,
         load_weights_from_checkpoint: Optional[str] = None,
         class_identifier: Optional[str] = None,
     ) -> None:
@@ -114,7 +114,7 @@ class CometModel(ptl.LightningModule, metaclass=abc.ABCMeta):
                 raise Exception(
                     "XLM-RoBERTa-XL requires transformers>=4.17.0. Your current version is {}".format(
                         transformers.__version__
-                    )
+                    )   
                 )
 
         self.encoder = str2encoder[self.hparams.encoder_model].from_pretrained(
@@ -353,17 +353,14 @@ class CometModel(ptl.LightningModule, metaclass=abc.ABCMeta):
         loss_value = self.compute_loss(batch_prediction, batch_target)
 
         self.log("val_loss", loss_value, on_step=True, on_epoch=True)
-
-        # TODO: REMOVE if condition after torchmetrics bug fix
-        if batch_prediction["score"].view(-1).size() != torch.Size([1]):
-            if dataloader_idx == 0:
-                self.train_metrics.update(
-                    batch_prediction["score"].view(-1), batch_target["score"]
-                )
-            elif dataloader_idx == 1:
-                self.val_metrics.update(
-                    batch_prediction["score"].view(-1), batch_target["score"]
-                )
+        if dataloader_idx == 0:
+            self.train_metrics.update(
+                batch_prediction["score"].view(-1), batch_target["score"]
+            )
+        elif dataloader_idx > 0:
+            self.val_metrics[dataloader_idx-1].update(
+                batch_prediction["score"].view(-1), batch_target["score"]
+            )
 
     def on_predict_start(self) -> None:
         """Called when predict begins."""
@@ -397,11 +394,23 @@ class CometModel(ptl.LightningModule, metaclass=abc.ABCMeta):
 
     def validation_epoch_end(self, *args, **kwargs) -> None:
         """Computes and logs metrics."""
-        self.log_dict(self.train_metrics.compute(), prog_bar=True)
-        self.log_dict(self.val_metrics.compute(), prog_bar=True)
+        self.log_dict(self.train_metrics.compute(), prog_bar=False)
         self.train_metrics.reset()
-        self.val_metrics.reset()
+
+        val_metrics =  []
+        for i in range(len(self.hparams.validation_data)):
+            results = self.val_metrics[i].compute()
+            self.val_metrics[i].reset()
+            # Log to tensorboard the results for this validation set.
+            self.log_dict(results, prog_bar=False)
+            val_metrics.append(results)
         
+        average_results = {"val_" + k.split("_")[-1]: [] for k in val_metrics[0].keys()}
+        for i in range(len(val_metrics)):
+            for k, v in val_metrics[i].items():
+                average_results["val_" + k.split("_")[-1]].append(v)
+            
+        self.log_dict({k: sum(v)/len(v) for k, v in average_results.items()}, prog_bar=True)
 
     def setup(self, stage) -> None:
         """Data preparation function called before training by Lightning.
@@ -410,7 +419,7 @@ class CometModel(ptl.LightningModule, metaclass=abc.ABCMeta):
         """
         if stage in (None, "fit"):
             self.train_dataset = self.read_csv(self.hparams.train_data)
-            self.validation_dataset = self.read_csv(self.hparams.validation_data)
+            self.validation_sets = [self.read_csv(d) for d in self.hparams.validation_data]
 
             self.epoch_total_steps = len(self.train_dataset) // (
                 self.hparams.batch_size * max(1, self.trainer.num_devices)
@@ -434,20 +443,24 @@ class CometModel(ptl.LightningModule, metaclass=abc.ABCMeta):
 
     def val_dataloader(self) -> DataLoader:
         """Function that loads the validation set."""
-        return [
+        val_data =  [
             DataLoader(
                 dataset=self.train_subset,
                 batch_size=self.hparams.batch_size,
                 collate_fn=self.prepare_sample,
                 num_workers=2 * self.trainer.num_devices,
-            ),
-            DataLoader(
-                dataset=self.validation_dataset,
-                batch_size=self.hparams.batch_size,
-                collate_fn=self.prepare_sample,
-                num_workers=2 * self.trainer.num_devices,
-            ),
+            )
         ]
+        for validation_set in self.validation_sets:
+            val_data.append(
+                DataLoader(
+                    dataset=validation_set,
+                    batch_size=self.hparams.batch_size,
+                    collate_fn=self.prepare_sample,
+                    num_workers=2 * self.trainer.num_devices,
+            )
+        )
+        return val_data
 
     def prepare_for_inference(self, sample):
         """Ideally this should be a lamba function but for some reason python does not copy local lambda functions.

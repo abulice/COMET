@@ -2,7 +2,7 @@ class_path: pytorch_lightning.trainer.trainer.Trainer
 init_args:
   accelerator: gpu
   devices: null
-  accumulate_grad_batches: 2
+  accumulate_grad_batches: 4
   amp_backend: native
   amp_level: null
   auto_lr_find: False
@@ -23,7 +23,7 @@ init_args:
   profiler: null
   overfit_batches: 0
   plugins: null
-  precision: 32
+  precision: 16
   max_epochs: 5
   min_epochs: 1
   max_steps: -1
