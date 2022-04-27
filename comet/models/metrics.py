@@ -25,6 +25,7 @@ from torch import Tensor
 from torchmetrics import Metric
 from typing import Any, Callable, List, Optional
 import scipy.stats as stats
+import warnings
 
 
 class RegressionMetrics(Metric):
@@ -65,9 +66,14 @@ class RegressionMetrics(Metric):
         """ Computes spearmans correlation coefficient. """
         preds = torch.cat(self.preds, dim=0)
         target = torch.cat(self.target, dim=0)
-        kendall, _ = stats.kendalltau(preds.tolist(), target.tolist())
-        spearman, _ = stats.spearmanr(preds.tolist(), target.tolist())
-        pearson, _ = stats.pearsonr(preds.tolist(), target.tolist())
+        if torch.isnan(preds).sum() >= 1:
+            warnings.warn("Nan found during evaluation! Setting correlations to -1.")
+            kendall, spearman, pearson = (-1.0, -1.0, -1.0)
+        else:
+            kendall, _ = stats.kendalltau(preds.tolist(), target.tolist())
+            spearman, _ = stats.spearmanr(preds.tolist(), target.tolist())
+            pearson, _ = stats.pearsonr(preds.tolist(), target.tolist())
+            
         return {
             self.prefix + "_kendall": kendall,
             self.prefix + "_spearman": spearman,
