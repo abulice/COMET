@@ -106,6 +106,9 @@ class RegressionMetric(CometModel):
             RegressionMetrics(prefix=d) 
             for d in self.hparams.validation_data
         ]
+    
+    def is_referenceless(self) -> bool:
+        return False
 
     def configure_optimizers(
         self,

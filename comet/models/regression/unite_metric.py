@@ -107,6 +107,9 @@ class UniTEMetric(RegressionMetric):
         )
         self.input_segments = input_segments
 
+    def is_referenceless(self) -> bool:
+        return "ref" not in self.input_segments
+
     def set_input_segments(self, input_segments: List[str]):
         assert input_segments in [
             ["mt", "src"],

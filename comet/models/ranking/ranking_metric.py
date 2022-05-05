@@ -96,6 +96,9 @@ class RankingMetric(CometModel):
             WMTKendall(prefix=d) 
             for d in self.hparams.validation_data
         ]
+    
+    def is_referenceless(self) -> bool:
+        return False
 
     @property
     def loss(self):

@@ -13,8 +13,13 @@ referenceless_regression_metric:
     layer: mix
     dropout: 0.1
     batch_size: 4
-    train_data: data/TRAIN.csv
-    validation_data: data/DEV.csv
+    train_data: data/1719-da.csv
+    validation_data: 
+      - data/qad-ende-newstest2020.csv
+      - data/qad-enru-newstest2020.csv
+      - data/wmt-ende-newstest2021.csv
+      - data/wmt-zhen-newstest2021.csv
+      - data/wmt-enru-newstest2021.csv
     hidden_sizes:
       - 2048
       - 1024
