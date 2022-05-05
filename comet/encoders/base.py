@@ -65,7 +65,7 @@ class Encoder(nn.Module, metaclass=abc.ABCMeta):
             return_tensors="pt",
             padding=True,
             truncation=True,
-            max_length=self.max_positions - 2,
+            max_length=self.max_positions,
         )
         return tokenizer_output
 
@@ -99,3 +99,22 @@ class Encoder(nn.Module, metaclass=abc.ABCMeta):
         self, tokens: torch.Tensor, lengths: torch.Tensor
     ) -> Dict[str, torch.Tensor]:
         pass
+
+    def concat_sequences(self, inputs: List[Dict[str, torch.Tensor]]) -> Dict[str, torch.Tensor]:
+        raise NotImplementedError
+
+    def pad_tensor(self, tensor, length, padding_index):
+        """ Pad a tensor to length with padding_index.
+
+        :param tensor: Tensor to pad.
+        :param length: Sequence length after padding.
+        :param padding_index: Index to pad tensor with.
+
+        :return: Padded Tensor.
+        """
+        n_padding = length - tensor.shape[0]
+        assert n_padding >= 0
+        if n_padding == 0:
+            return tensor
+        padding = tensor.new(n_padding, *tensor.shape[1:]).fill_(padding_index)
+        return torch.cat((tensor, padding), dim=0)

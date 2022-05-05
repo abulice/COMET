@@ -37,6 +37,7 @@ from comet.models import (
     RankingMetric,
     ReferencelessRegression,
     RegressionMetric,
+    UniTEMetric
 )
 from jsonargparse import ActionConfigFile, ArgumentParser, namespace_to_dict
 from pytorch_lightning import seed_everything
@@ -59,6 +60,7 @@ def train_command() -> None:
         ReferencelessRegression, "referenceless_regression_metric"
     )
     parser.add_subclass_arguments(RankingMetric, "ranking_metric")
+    parser.add_subclass_arguments(UniTEMetric, "unite_metric")
     parser.add_subclass_arguments(EarlyStopping, "early_stopping")
     parser.add_subclass_arguments(ModelCheckpoint, "model_checkpoint")
     parser.add_subclass_arguments(Trainer, "trainer")
@@ -103,6 +105,13 @@ def train_command() -> None:
             )
         )
         model = RankingMetric(**namespace_to_dict(cfg.ranking_metric.init_args))
+    elif cfg.unite_metric is not None:
+        print(
+            json.dumps(
+                cfg.unite_metric.init_args, indent=4, default=lambda x: x.__dict__
+            )
+        )
+        model = UniTEMetric(**namespace_to_dict(cfg.unite_metric.init_args))
     else:
         raise Exception("Model configurations missing!")
     # Related to train/val_dataloaders:

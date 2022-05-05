@@ -17,6 +17,9 @@
 from .regression.regression_metric import RegressionMetric
 from .ranking.ranking_metric import RankingMetric
 from .regression.referenceless import ReferencelessRegression
+from .regression.unite_metric import UniTEMetric
+from .regression.cspec_metric import CSPECMetric
+
 from .base import CometModel
 
 import os
@@ -26,7 +29,9 @@ str2model = {
     "referenceless_regression_metric": ReferencelessRegression,
     "regression_metric": RegressionMetric,
     "ranking_metric": RankingMetric,
+    "unite_metric": UniTEMetric,
 }
+
 
 available_metrics = {
     # WMT20 Models

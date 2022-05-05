@@ -44,7 +44,7 @@ class BERTEncoder(Encoder):
     @property
     def max_positions(self):
         """Max number of tokens the encoder handles."""
-        return self.model.config.max_position_embeddings
+        return 512
 
     @property
     def num_layers(self):
