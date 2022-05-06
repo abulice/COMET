@@ -172,7 +172,7 @@ For more information about the available COMET models read our metrics descripti
 
 Additionally you can also use [UniTE models [Wan, et al. 2022]](https://arxiv.org/abs/2204.13346) to perform reference, source and source+reference evaluation with one single model!
 
-```
+```python
 from comet import download_model, load_from_checkpoint
 
 model_path = download_model("unite-mup-da")
