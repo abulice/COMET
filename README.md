@@ -9,8 +9,9 @@
 </p>
 
 > Version 1.2 is out 🥳! whats new?
-> 1) We added [UniTE (Wan, et al. 2022)](https://arxiv.org/abs/2204.13346) to the list of available model! 
-> 2) 
+> 1) We added [UniTE [Wan, et al. 2022]](https://arxiv.org/abs/2204.13346) to the list of available model! 
+> 2) Validation with multiple Development Sets.
+> 3) `comet-compare` supporting comparison between multiple systems.
 
 ## Quick Installation
 
@@ -166,6 +167,35 @@ Our recommended QE system was [developed for the WMT21 Metrics shared task](http
 **Note:** The range of scores between different models can be totally different. To better understand COMET scores please [take a look at our FAQs](https://unbabel.github.io/COMET/html/faqs.html)
 
 For more information about the available COMET models read our metrics descriptions [here](https://unbabel.github.io/COMET/html/models.html)
+
+## NEW: UniTE Models:
+
+Additionally you can also use [UniTE models [Wan, et al. 2022]](https://arxiv.org/abs/2204.13346) to perform reference, source and source+reference evaluation with one single model!
+
+```
+from comet import download_model, load_from_checkpoint
+
+model_path = download_model("unite-mup-da")
+model = load_from_checkpoint(model_path)
+
+src = ['你好！', '很高兴认识你！']
+mt = ['Hi!', 'Nice to see you!']
+ref = ['Hello!', 'Nice to meet you!']
+
+# Source-only Evaluation
+model.set_input_segments(["mt", "src"])
+seg_scores, sys_score = model.predict([{"src": s, "mt": t} for s, t in zip(src, mt)])
+
+# Reference-only Evaluation
+model.set_input_segments(["mt", "ref"])
+seg_scores, sys_score = model.predict([{"ref": r, "mt": t} for r, t in zip(ref, mt)])
+
+# Source-Reference Evaluation
+model.set_input_segments(["mt", "src", "ref"])
+seg_scores, sys_score = model.predict(
+    [{"src": s, "mt": t, "ref": r} for s, t, r in zip(src, mt, ref)]
+)
+```
 
 ## Train your own Metric: 
 

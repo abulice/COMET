@@ -103,10 +103,9 @@ class RegressionMetric(CometModel):
     def init_metrics(self):
         self.train_metrics = RegressionMetrics(prefix="train")
         self.val_metrics = [
-            RegressionMetrics(prefix=d) 
-            for d in self.hparams.validation_data
+            RegressionMetrics(prefix=d) for d in self.hparams.validation_data
         ]
-    
+
     def is_referenceless(self) -> bool:
         return False
 

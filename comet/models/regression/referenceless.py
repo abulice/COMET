@@ -97,7 +97,7 @@ class ReferencelessRegression(RegressionMetric):
             dropout=self.hparams.dropout,
             final_activation=self.hparams.final_activation,
         )
-    
+
     def is_referenceless(self) -> bool:
         return True
 

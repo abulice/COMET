@@ -50,7 +50,7 @@ class UniTEMetric(RegressionMetric):
     :param hidden_sizes: Hidden sizes for the Feed Forward regression.
     :param activations: Feed Forward activation function.
     :param final_activation: Feed Forward final activation.
-    :param input_segments: Input sequences used during training/inference. 
+    :param input_segments: Input sequences used during training/inference.
         ["mt", "src"] for QE, ["mt", "ref"] for reference-base evaluation and ["mt", "src", "ref"]
         for full sequence evaluation.
     :param load_weights_from_checkpoint: Path to a checkpoint file.
@@ -115,8 +115,10 @@ class UniTEMetric(RegressionMetric):
             ["mt", "src"],
             ["mt", "ref"],
             ["mt", "src", "ref"],
-        ], "Input segments is ['mt', 'src'] for QE, ['mt', 'ref'] for reference-based evaluation \
-            and ['mt', 'src', 'ref'] for complete sequence evaluation."
+        ], (
+            "Input segments is ['mt', 'src'] for QE, ['mt', 'ref'] for reference-based evaluation"
+            "and ['mt', 'src', 'ref'] for complete sequence evaluation."
+        )
         self.input_segments = input_segments
 
     def prepare_sample(
@@ -136,11 +138,15 @@ class UniTEMetric(RegressionMetric):
         sample = {k: [dic[k] for dic in sample] for k in sample[0]}
         inputs = [self.encoder.prepare_sample(sample["mt"])]
         if "src" in self.input_segments:
-            assert "src" in sample.keys(), "UniTEMetric expects a source segment ('src') as input."
+            assert (
+                "src" in sample.keys()
+            ), "UniTEMetric expects a source segment ('src') as input."
             inputs.append(self.encoder.prepare_sample(sample["src"]))
 
         if "ref" in self.input_segments:
-            assert "ref" in sample.keys(), "UniTEMetric expects a source segment ('ref') as input."
+            assert (
+                "ref" in sample.keys()
+            ), "UniTEMetric expects a source segment ('ref') as input."
             inputs.append(self.encoder.prepare_sample(sample["ref"]))
 
         contiguous_input = self.encoder.concat_sequences(inputs)

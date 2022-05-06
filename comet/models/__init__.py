@@ -18,7 +18,6 @@ from .regression.regression_metric import RegressionMetric
 from .ranking.ranking_metric import RankingMetric
 from .regression.referenceless import ReferencelessRegression
 from .regression.unite_metric import UniTEMetric
-from .regression.cspec_metric import CSPECMetric
 
 from .base import CometModel
 
@@ -47,6 +46,9 @@ available_metrics = {
     "wmt21-cometinho-da": "https://unbabel-experimental-models.s3.amazonaws.com/comet/wmt21/wmt21-cometinho-da.tar.gz",
     "wmt21-comet-qe-mqm": "https://unbabel-experimental-models.s3.amazonaws.com/comet/wmt21/wmt21-comet-qe-mqm.tar.gz",
     "wmt21-comet-qe-da": "https://unbabel-experimental-models.s3.amazonaws.com/comet/wmt21/refless-wmt21-comet-da.tar.gz",
+
+    # UniTE Models
+    "unite-mup-da": "https://unbabel-experimental-models.s3.amazonaws.com/comet/unite/unite-mup-da.tar.gz",
 }
 
 

@@ -442,7 +442,7 @@ class CometModel(ptl.LightningModule, metaclass=abc.ABCMeta):
             sampler=RandomSampler(self.train_dataset),
             batch_size=self.hparams.batch_size,
             collate_fn=self.prepare_sample,
-            #num_workers=2 * self.trainer.num_devices,
+            num_workers=2 * self.trainer.num_devices,
         )
 
     def val_dataloader(self) -> DataLoader:
@@ -452,7 +452,7 @@ class CometModel(ptl.LightningModule, metaclass=abc.ABCMeta):
                 dataset=self.train_subset,
                 batch_size=self.hparams.batch_size,
                 collate_fn=self.prepare_sample,
-                #num_workers=2 * self.trainer.num_devices,
+                num_workers=2 * self.trainer.num_devices,
             )
         ]
         for validation_set in self.validation_sets:
@@ -461,7 +461,7 @@ class CometModel(ptl.LightningModule, metaclass=abc.ABCMeta):
                     dataset=validation_set,
                     batch_size=self.hparams.batch_size,
                     collate_fn=self.prepare_sample,
-                    #num_workers=2 * self.trainer.num_devices,
+                    num_workers=2 * self.trainer.num_devices,
             )
         )
         return val_data
@@ -515,7 +515,10 @@ class CometModel(ptl.LightningModule, metaclass=abc.ABCMeta):
         # setup, so currently raw chars are used as an approximation
         sampler = None
         if length_batching and gpus < 2:
-            sort_ids = np.argsort([len(sample["src"]) for sample in samples])
+            if self.is_referenceless():
+                sort_ids = np.argsort([len(sample["src"]) for sample in samples])
+            else:
+                sort_ids = np.argsort([len(sample["ref"]) for sample in samples])
             sampler = OrderedSampler(sort_ids)
 
         if num_workers is None:
@@ -527,7 +530,7 @@ class CometModel(ptl.LightningModule, metaclass=abc.ABCMeta):
             batch_size=batch_size,
             sampler=sampler,
             collate_fn=self.prepare_for_inference,
-            #num_workers=num_workers,
+            num_workers=num_workers,
         )
         accelerator = accelerator if gpus > 1 else None
 
