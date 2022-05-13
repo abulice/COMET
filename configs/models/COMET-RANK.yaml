@@ -12,11 +12,10 @@ ranking_metric:
     pool: avg
     layer: mix
     dropout: 0.1
-    batch_size: 4
+    batch_size: 2
     train_data: data/1719-daRR.csv
     validation_data: 
       - data/2020-daRR.csv
-      - data/2021-daRR.csv
       
 trainer: ../trainer.yaml
 early_stopping: ../early_stopping.yaml
