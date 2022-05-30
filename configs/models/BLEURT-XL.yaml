@@ -7,8 +7,8 @@ unite_metric:
     encoder_learning_rate: 5.0e-06
     learning_rate: 1.5e-05
     layerwise_decay: 0.95
-    encoder_model: XLM-RoBERTa
-    pretrained_model: xlm-roberta-base
+    encoder_model: XLM-RoBERTa-XL
+    pretrained_model: facebook/xlm-roberta-xl
     pool: cls
     layer: mix
     dropout: 0.1
@@ -20,15 +20,13 @@ unite_metric:
       - data/wmt-ende-newstest2020.csv
       - data/wmt-zhen-newstest2020.csv
     hidden_sizes:
-      - 3072
+      - 5120
       - 1024
     activations: Tanh
     input_segments:
       - mt
-      - src
       - ref
     
 trainer: ../trainer.yaml
 early_stopping: ../early_stopping.yaml
 model_checkpoint: ../model_checkpoint.yaml
-stochastic_weight_avg: ../stochastic_weight_avg.yaml

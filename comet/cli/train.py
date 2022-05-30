@@ -31,17 +31,13 @@ For more details run the following command:
 import json
 import warnings
 
-
-from comet.models import (
-    CometModel,
-    RankingMetric,
-    ReferencelessRegression,
-    RegressionMetric,
-    UniTEMetric
-)
+from comet.models import (CometModel, CSPECMetric, RankingMetric,
+                          ReferencelessRegression, RegressionMetric,
+                          UniTEMetric)
 from jsonargparse import ActionConfigFile, ArgumentParser, namespace_to_dict
 from pytorch_lightning import seed_everything
-from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
+from pytorch_lightning.callbacks import (EarlyStopping, LearningRateMonitor,
+                                         ModelCheckpoint)
 from pytorch_lightning.trainer.trainer import Trainer
 
 
@@ -61,6 +57,7 @@ def train_command() -> None:
     )
     parser.add_subclass_arguments(RankingMetric, "ranking_metric")
     parser.add_subclass_arguments(UniTEMetric, "unite_metric")
+    parser.add_subclass_arguments(CSPECMetric, "cspec_metric")
     parser.add_subclass_arguments(EarlyStopping, "early_stopping")
     parser.add_subclass_arguments(ModelCheckpoint, "model_checkpoint")
     parser.add_subclass_arguments(Trainer, "trainer")
@@ -74,7 +71,8 @@ def train_command() -> None:
         **namespace_to_dict(cfg.early_stopping.init_args)
     )
     trainer_args = namespace_to_dict(cfg.trainer.init_args)
-    trainer_args["callbacks"] = [early_stop_callback, checkpoint_callback]
+    lr_monitor = LearningRateMonitor(logging_interval='step')
+    trainer_args["callbacks"] = [early_stop_callback, checkpoint_callback, lr_monitor]
     print("TRAINER ARGUMENTS: ")
     print(json.dumps(trainer_args, indent=4, default=lambda x: x.__dict__))
     trainer = Trainer(**trainer_args)
@@ -112,6 +110,13 @@ def train_command() -> None:
             )
         )
         model = UniTEMetric(**namespace_to_dict(cfg.unite_metric.init_args))
+    elif cfg.cspec_metric is not None:
+        print(
+            json.dumps(
+                cfg.cspec_metric.init_args, indent=4, default=lambda x: x.__dict__
+            )
+        )
+        model = CSPECMetric(**namespace_to_dict(cfg.cspec_metric.init_args))
     else:
         raise Exception("Model configurations missing!")
     # Related to train/val_dataloaders:

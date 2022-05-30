@@ -18,6 +18,7 @@ from .regression.regression_metric import RegressionMetric
 from .ranking.ranking_metric import RankingMetric
 from .regression.referenceless import ReferencelessRegression
 from .regression.unite_metric import UniTEMetric
+from .regression.cspec_metric import CSPECMetric
 
 from .base import CometModel
 
@@ -29,6 +30,7 @@ str2model = {
     "regression_metric": RegressionMetric,
     "ranking_metric": RankingMetric,
     "unite_metric": UniTEMetric,
+    "cspec_metric": CSPECMetric,
 }
 
 

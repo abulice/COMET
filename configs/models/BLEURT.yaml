@@ -8,8 +8,8 @@ unite_metric:
     learning_rate: 1.5e-05
     layerwise_decay: 0.95
     encoder_model: XLM-RoBERTa
-    pretrained_model: xlm-roberta-base
-    pool: cls
+    pretrained_model: xlm-roberta-large
+    pool: avg
     layer: mix
     dropout: 0.1
     batch_size: 2

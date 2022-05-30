@@ -22,6 +22,7 @@ referenceless_regression_metric:
     hidden_sizes:
       - 2048
       - 1024
+    activations: Tanh
     
 trainer: ../trainer.yaml
 early_stopping: ../early_stopping.yaml

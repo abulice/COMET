@@ -14,21 +14,20 @@
 # limitations under the License.
 
 r"""
-UniTE Metric
+CSPEC Metric
 ========================
-    Implementation of the UniTE metric proposed in 
-    [UniTE: Unified Translation Evaluation](https://arxiv.org/pdf/2204.13346.pdf)
+    Implementation of the CSPEC metric proposed in 
+    [Automatic Machine Translation Evaluation using Source Language Inputs and Cross-lingual Language Model](https://aclanthology.org/2020.acl-main.327.pdf)
 """
 from typing import Dict, List, Optional, Tuple, Union
 
-import pandas as pd
 import torch
 from comet.models.regression.regression_metric import RegressionMetric
 from comet.modules import FeedForward
 
 
-class UniTEMetric(RegressionMetric):
-    """UniTEMetric:
+class CSPECMetric(RegressionMetric):
+    """CSPECMetric:
 
     :param nr_frozen_epochs: Number of epochs (% of epoch) that the encoder is frozen.
     :param keep_embeddings_frozen: Keeps the encoder frozen during training.
@@ -47,9 +46,6 @@ class UniTEMetric(RegressionMetric):
     :param hidden_sizes: Hidden sizes for the Feed Forward regression.
     :param activations: Feed Forward activation function.
     :param final_activation: Feed Forward final activation.
-    :param input_segments: Input sequences used during training/inference.
-        ["mt", "src"] for QE, ["mt", "ref"] for reference-base evaluation and ["mt", "src", "ref"]
-        for full sequence evaluation.
     :param load_weights_from_checkpoint: Path to a checkpoint file.
     """
 
@@ -72,7 +68,6 @@ class UniTEMetric(RegressionMetric):
         hidden_sizes: List[int] = [2304, 768],
         activations: str = "Tanh",
         final_activation: Optional[str] = None,
-        input_segments: Optional[List[str]] = ["mt", "src", "ref"],
         load_weights_from_checkpoint: Optional[str] = None,
     ) -> None:
         super(RegressionMetric, self).__init__(
@@ -91,32 +86,20 @@ class UniTEMetric(RegressionMetric):
             train_data,
             validation_data,
             load_weights_from_checkpoint,
-            "unite_metric",
+            "cspec_metric",
         )
         self.save_hyperparameters()
 
         self.estimator = FeedForward(
-            in_dim=self.encoder.output_units,
+            in_dim=self.encoder.output_units*2,
             hidden_sizes=self.hparams.hidden_sizes,
             activations=self.hparams.activations,
             dropout=self.hparams.dropout,
             final_activation=self.hparams.final_activation,
         )
-        self.input_segments = input_segments
 
     def is_referenceless(self) -> bool:
-        return "ref" not in self.input_segments
-
-    def set_input_segments(self, input_segments: List[str]):
-        assert input_segments in [
-            ["mt", "src"],
-            ["mt", "ref"],
-            ["mt", "src", "ref"],
-        ], (
-            "Input segments is ['mt', 'src'] for QE, ['mt', 'ref'] for reference-based evaluation"
-            "and ['mt', 'src', 'ref'] for complete sequence evaluation."
-        )
-        self.input_segments = input_segments
+        return False
 
     def prepare_sample(
         self, sample: List[Dict[str, Union[str, float]]], inference: bool = False
@@ -133,28 +116,32 @@ class UniTEMetric(RegressionMetric):
             If `inference=True` returns only the model inputs.
         """
         sample = {k: [dic[k] for dic in sample] for k in sample[0]}
-        inputs = [self.encoder.prepare_sample(sample["mt"])]
-        if "src" in self.input_segments:
-            assert (
-                "src" in sample.keys()
-            ), "UniTEMetric expects a source segment ('src') as input."
-            inputs.append(self.encoder.prepare_sample(sample["src"]))
+        src_inputs = self.encoder.prepare_sample(sample["src"])
+        mt_inputs = self.encoder.prepare_sample(sample["mt"])
+        ref_inputs = self.encoder.prepare_sample(sample["ref"])
+        
+        src_input = self.encoder.concat_sequences([mt_inputs, src_inputs])
+        ref_input = self.encoder.concat_sequences([mt_inputs, ref_inputs])
 
-        if "ref" in self.input_segments:
-            assert (
-                "ref" in sample.keys()
-            ), "UniTEMetric expects a source segment ('ref') as input."
-            inputs.append(self.encoder.prepare_sample(sample["ref"]))
+        src_inputs = {"src_" + k: v for k, v in src_input.items()}
+        ref_inputs = {"ref_" + k: v for k, v in ref_input.items()}
+        inputs = {**src_inputs, **ref_inputs}
 
-        contiguous_input = self.encoder.concat_sequences(inputs)
         if inference:
-            return contiguous_input
+            return inputs
 
         targets = {"score": torch.tensor(sample["score"], dtype=torch.float)}
-        return contiguous_input, targets
+        return inputs, targets
 
     def forward(
-        self, input_ids: torch.tensor, attention_mask: torch.tensor, **kwargs
+        self, 
+        src_input_ids: torch.tensor, 
+        src_attention_mask: torch.tensor, 
+        ref_input_ids: torch.tensor, 
+        ref_attention_mask: torch.tensor, 
+        **kwargs
     ) -> Dict[str, torch.Tensor]:
-        sentemb = self.get_sentence_embedding(input_ids, attention_mask)
-        return {"score": self.estimator(sentemb)}
+        src_sentemb = self.get_sentence_embedding(src_input_ids, src_attention_mask)
+        ref_sentemb = self.get_sentence_embedding(ref_input_ids, ref_attention_mask)
+        embedded_sequences = torch.cat((src_sentemb, ref_sentemb), dim=1)
+        return {"score": self.estimator(embedded_sequences)}
