@@ -27,8 +27,8 @@ unite_metric:
       - mt
       - src
       - ref
-    unite_training: True
     
 trainer: ../trainer.yaml
 early_stopping: ../early_stopping.yaml
 model_checkpoint: ../model_checkpoint.yaml
+stochastic_weight_avg: ../stochastic_weight_avg.yaml

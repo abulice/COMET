@@ -3,6 +3,7 @@ init_args:
   accelerator: gpu
   devices: null
   precision: 16
+  #strategy: deepspeed_stage_2
   accumulate_grad_batches: 16
   amp_backend: native
   amp_level: null

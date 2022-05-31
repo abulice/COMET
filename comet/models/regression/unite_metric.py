@@ -21,7 +21,6 @@ UniTE Metric
 """
 from typing import Dict, List, Optional, Tuple, Union
 
-import pandas as pd
 import torch
 from comet.models.regression.regression_metric import RegressionMetric
 from comet.modules import FeedForward
@@ -50,6 +49,8 @@ class UniTEMetric(RegressionMetric):
     :param input_segments: Input sequences used during training/inference.
         ["mt", "src"] for QE, ["mt", "ref"] for reference-base evaluation and ["mt", "src", "ref"]
         for full sequence evaluation.
+    :param unite_training: If set to true the model is trained with UniTE loss that combines QE 
+        with Metrics.
     :param load_weights_from_checkpoint: Path to a checkpoint file.
     """
 
@@ -74,6 +75,7 @@ class UniTEMetric(RegressionMetric):
         final_activation: Optional[str] = None,
         input_segments: Optional[List[str]] = ["mt", "src", "ref"],
         load_weights_from_checkpoint: Optional[str] = None,
+        unite_training: Optional[bool] = False,
     ) -> None:
         super(RegressionMetric, self).__init__(
             nr_frozen_epochs,
@@ -103,7 +105,8 @@ class UniTEMetric(RegressionMetric):
             final_activation=self.hparams.final_activation,
         )
         self.input_segments = input_segments
-
+        self.unite_training = unite_training
+    
     def is_referenceless(self) -> bool:
         return "ref" not in self.input_segments
 
@@ -151,10 +154,115 @@ class UniTEMetric(RegressionMetric):
             return contiguous_input
 
         targets = {"score": torch.tensor(sample["score"], dtype=torch.float)}
-        return contiguous_input, targets
+
+        if self.unite_training:
+            qe_inputs = self.encoder.concat_sequences([
+                self.encoder.prepare_sample(sample["mt"]), 
+                self.encoder.prepare_sample(sample["src"])
+            ])
+            metric_inputs = self.encoder.concat_sequences([
+                self.encoder.prepare_sample(sample["mt"]), 
+                self.encoder.prepare_sample(sample["ref"])
+            ])
+            inputs = (qe_inputs, metric_inputs, contiguous_input)
+
+        else:
+            inputs = contiguous_input
+
+        return inputs, targets
 
     def forward(
         self, input_ids: torch.tensor, attention_mask: torch.tensor, **kwargs
     ) -> Dict[str, torch.Tensor]:
         sentemb = self.get_sentence_embedding(input_ids, attention_mask)
         return {"score": self.estimator(sentemb)}
+
+    def training_step(
+        self,
+        batch: Tuple[Dict[str, torch.Tensor], Dict[str, torch.Tensor]],
+        batch_nb: int,
+    ) -> torch.Tensor:
+        """
+        Runs one training step and logs the training loss.
+
+        :param batch: The output of your prepare_sample function.
+        :param batch_nb: Integer displaying which batch this is.
+
+        :returns: Loss value
+        """
+        batch_input, batch_target = batch
+        if self.unite_training:
+            # In UniTE training is made of 3 losses:
+            #    Lsrc + Lref + Lsrc+ref
+            # For that reason we have to perform 3 forward passes and sum 
+            # the respective losses.
+            qe_inputs, metric_inputs, unified_inputs = batch_input
+            qe_prediction = self.forward(**qe_inputs)
+            metric_prediction = self.forward(**metric_inputs)
+            unified_prediction = self.forward(**unified_inputs)
+            
+            qe_loss = self.compute_loss(qe_prediction, batch_target)
+            metric_loss = self.compute_loss(metric_prediction, batch_target)
+            unified_loss = self.compute_loss(unified_prediction, batch_target)
+            loss_value = qe_loss + metric_loss + unified_loss
+
+        else:
+            batch_prediction = self.forward(**batch_input)
+            loss_value = self.compute_loss(batch_prediction, batch_target)
+
+        if (
+            self.nr_frozen_epochs < 1.0
+            and self.nr_frozen_epochs > 0.0
+            and batch_nb > self.epoch_total_steps * self.nr_frozen_epochs
+        ):
+            self.unfreeze_encoder()
+            self._frozen = False
+
+        self.log("train_loss", loss_value, on_step=True, on_epoch=True)
+        return loss_value
+
+    def validation_step(
+        self,
+        batch: Tuple[Dict[str, torch.Tensor], Dict[str, torch.Tensor]],
+        batch_nb: int,
+        dataloader_idx: int,
+    ) -> None:
+        """
+        Runs one validation step and logs metrics.
+
+        :param batch: The output of your prepare_sample function.
+        :param batch_nb: Integer displaying which batch this is.
+        :param dataloader_idx: Integer displaying which dataloader this is.
+        """
+        batch_input, batch_target = batch
+        if self.unite_training:
+            # In UniTE training is made of 3 losses:
+            #    Lsrc + Lref + Lsrc+ref
+            # For that reason we have to perform 3 forward passes and sum 
+            # the respective losses.
+            qe_inputs, metric_inputs, unified_inputs = batch_input
+            qe_prediction = self.forward(**qe_inputs)
+            metric_prediction = self.forward(**metric_inputs)
+            unified_prediction = self.forward(**unified_inputs)
+    
+            qe_loss = self.compute_loss(qe_prediction, batch_target)
+            metric_loss = self.compute_loss(metric_prediction, batch_target)
+            unified_loss = self.compute_loss(unified_prediction, batch_target)
+            scores = (
+                qe_prediction["score"].view(-1) + 
+                metric_prediction["score"].view(-1) + 
+                unified_prediction["score"].view(-1)
+            )/3
+            loss_value = qe_loss + metric_loss + unified_loss
+
+        else:
+            batch_prediction = self.forward(**batch_input)
+            scores = batch_prediction["score"].view(-1)
+            loss_value = self.compute_loss(batch_prediction, batch_target)
+
+        self.log("val_loss", loss_value, on_step=True, on_epoch=True)
+        if dataloader_idx == 0:
+            self.train_metrics.update(scores, batch_target["score"])
+
+        elif dataloader_idx > 0:
+            self.val_metrics[dataloader_idx-1].update(scores, batch_target["score"])
