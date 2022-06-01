@@ -178,23 +178,16 @@ from comet import download_model, load_from_checkpoint
 model_path = download_model("unite-mup-da")
 model = load_from_checkpoint(model_path)
 
-src = ['你好！', '很高兴认识你！']
-mt = ['Hi!', 'Nice to see you!']
-ref = ['Hello!', 'Nice to meet you!']
+src = ['Dem Feuer konnte Einhalt geboten werden', 'Schulen und Kindergärten wurden eröffnet.']
+mt = ['The fire could be stopped', 'Schools and kindergartens were open']
+ref = ['They were able to control the fire.', 'Nice to meet you!']
 
 # Source-only Evaluation
-model.set_input_segments(["mt", "src"])
-seg_scores, sys_score = model.predict([{"src": s, "mt": t} for s, t in zip(src, mt)])
-
+qe_scores, _ = model.predict([{"src": s, "mt": t} for s, t in zip(src, mt)], gpus=0)
 # Reference-only Evaluation
-model.set_input_segments(["mt", "ref"])
-seg_scores, sys_score = model.predict([{"ref": r, "mt": t} for r, t in zip(ref, mt)])
-
+metric_scores, _ = model.predict([{"ref": r, "mt": t} for r, t in zip(ref, mt)], gpus=0)
 # Source-Reference Evaluation
-model.set_input_segments(["mt", "src", "ref"])
-seg_scores, sys_score = model.predict(
-    [{"src": s, "mt": t, "ref": r} for s, t, r in zip(src, mt, ref)]
-)
+unified_scores, _ = model.predict([{"src": s, "mt": t, "ref": r} for s, t, r in zip(src, mt, ref)])
 ```
 
 ## Train your own Metric: 

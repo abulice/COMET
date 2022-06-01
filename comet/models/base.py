@@ -515,9 +515,9 @@ class CometModel(ptl.LightningModule, metaclass=abc.ABCMeta):
         # setup, so currently raw chars are used as an approximation
         sampler = None
         if length_batching and gpus < 2:
-            if self.is_referenceless():
+            try:
                 sort_ids = np.argsort([len(sample["src"]) for sample in samples])
-            else:
+            except KeyError:
                 sort_ids = np.argsort([len(sample["ref"]) for sample in samples])
             sampler = OrderedSampler(sort_ids)
 

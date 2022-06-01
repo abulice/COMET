@@ -21,6 +21,7 @@ UniTE Metric
 """
 from typing import Dict, List, Optional, Tuple, Union
 
+import pandas as pd
 import torch
 from comet.models.regression.regression_metric import RegressionMetric
 from comet.modules import FeedForward
@@ -108,8 +109,8 @@ class UniTEMetric(RegressionMetric):
         self.unite_training = unite_training
     
     def is_referenceless(self) -> bool:
-        return "ref" not in self.input_segments
-
+        return True
+    
     def set_input_segments(self, input_segments: List[str]):
         assert input_segments in [
             ["mt", "src"],
@@ -120,6 +121,20 @@ class UniTEMetric(RegressionMetric):
             "and ['mt', 'src', 'ref'] for complete sequence evaluation."
         )
         self.input_segments = input_segments
+
+    def read_csv(self, path: str) -> List[dict]:
+        """Reads a comma separated value file.
+
+        :param path: path to a csv file.
+
+        :return: List of records as dictionaries
+        """
+        df = pd.read_csv(path)
+        df = df[self.input_segments + "score"]
+        for segment in self.input_segments:
+            df[segment] = df[segment].astype(str)
+        df["score"] = df["score"].astype("float16")
+        return df.to_dict("records")
 
     def prepare_sample(
         self, sample: List[Dict[str, Union[str, float]]], inference: bool = False
@@ -137,16 +152,10 @@ class UniTEMetric(RegressionMetric):
         """
         sample = {k: [dic[k] for dic in sample] for k in sample[0]}
         inputs = [self.encoder.prepare_sample(sample["mt"])]
-        if "src" in self.input_segments:
-            assert (
-                "src" in sample.keys()
-            ), "UniTEMetric expects a source segment ('src') as input."
+        if "src" in sample:
             inputs.append(self.encoder.prepare_sample(sample["src"]))
 
-        if "ref" in self.input_segments:
-            assert (
-                "ref" in sample.keys()
-            ), "UniTEMetric expects a source segment ('ref') as input."
+        if "ref" in sample:
             inputs.append(self.encoder.prepare_sample(sample["ref"]))
 
         contiguous_input = self.encoder.concat_sequences(inputs)
@@ -266,3 +275,4 @@ class UniTEMetric(RegressionMetric):
 
         elif dataloader_idx > 0:
             self.val_metrics[dataloader_idx-1].update(scores, batch_target["score"])
+    
