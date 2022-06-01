@@ -16,6 +16,7 @@ ranking_metric:
     train_data: data/1719-daRR.csv
     validation_data: 
       - data/2020-daRR.csv
+      - data/2021-daRR.csv
       
 trainer: ../trainer.yaml
 early_stopping: ../early_stopping.yaml

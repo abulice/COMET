@@ -43,6 +43,13 @@ class Encoder(nn.Module, metaclass=abc.ABCMeta):
     def num_layers(self):
         """Number of model layers available."""
         pass
+    
+    @property
+    @abc.abstractmethod
+    def size_separator(self):
+        """ Number of tokens used between two segments. For BERT is just 1 ([SEP])
+        but models such as XLM-R use 2 (</s></s>)  """
+        pass
 
     @classmethod
     @abc.abstractmethod

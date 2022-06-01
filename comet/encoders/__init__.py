@@ -16,9 +16,15 @@ from packaging import version
 
 from .bert import BERTEncoder
 from .minilm import MiniLMEncoder
+from .rembert import RemBERTEncoder
 from .xlmr import XLMREncoder
 
-str2encoder = {"BERT": BERTEncoder, "XLM-RoBERTa": XLMREncoder, "MiniLM": MiniLMEncoder}
+str2encoder = {
+    "BERT": BERTEncoder, 
+    "XLM-RoBERTa": XLMREncoder, 
+    "MiniLM": MiniLMEncoder, 
+    "RemBERT": RemBERTEncoder
+}
 
 if version.parse(transformers.__version__) >= version.parse("4.17.0"):
     from .xlmr_xl import XLMRXLEncoder

@@ -7,10 +7,10 @@ unite_metric:
     encoder_learning_rate: 5.0e-06
     learning_rate: 1.5e-05
     layerwise_decay: 0.95
-    encoder_model: XLM-RoBERTa
-    pretrained_model: xlm-roberta-large
-    pool: avg
-    layer: mix
+    encoder_model: RemBERT
+    pretrained_model: google/rembert
+    pool: cls
+    layer: 32
     dropout: 0.1
     batch_size: 2
     train_data: data/1719-da.csv
