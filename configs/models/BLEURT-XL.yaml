@@ -10,9 +10,9 @@ unite_metric:
     encoder_model: XLM-RoBERTa-XL
     pretrained_model: facebook/xlm-roberta-xl
     pool: cls
-    layer: mix
+    layer: 36
     dropout: 0.1
-    batch_size: 2
+    batch_size: 1
     train_data: data/1719-da.csv
     validation_data: 
       - data/qad-ende-newstest2020.csv
